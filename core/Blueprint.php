@@ -71,6 +71,11 @@ class Blueprint
         $this->addColumn('deleted_at', 'timestamp')->nullable();
     }
 
+    public function datetime(string $name): ColumnDefinition
+    {
+        return $this->addColumn($name, 'datetime');
+    }
+
     public function json(string $name): ColumnDefinition
     {
         return $this->addColumn($name, 'json');
@@ -148,6 +153,7 @@ class Blueprint
                 'float'      => 'REAL',
                 'decimal'    => 'REAL',
                 'timestamp'  => 'DATETIME',
+                'datetime'   => 'DATETIME',
                 default      => 'TEXT',
             };
         }
@@ -167,6 +173,7 @@ class Blueprint
             'float'      => 'FLOAT',
             'decimal'    => "DECIMAL({$total},{$places})",
             'timestamp'  => 'TIMESTAMP',
+            'datetime'   => 'DATETIME',
             'json'       => 'JSON',
             default      => 'VARCHAR(255)',
         };

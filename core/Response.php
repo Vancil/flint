@@ -40,6 +40,23 @@ class Response
         return $r->withHeader('Location', $url);
     }
 
+    /** Redirect to the previous URL (stored in session). */
+    public static function back(int $status = 302): static
+    {
+        $url = '/';
+        if (isset($GLOBALS['__flint_app'])) {
+            $url = $GLOBALS['__flint_app']->make(Session::class)->get('_previous_url', '/');
+        }
+        return static::redirect($url, $status);
+    }
+
+    /** Render an Ember view and return an HTML response. */
+    public static function view(string $view, array $data = [], int $status = 200): static
+    {
+        $engine = $GLOBALS['__flint_app']->make(\Flint\View\EmberEngine::class);
+        return static::html($engine->render($view, $data), $status);
+    }
+
     /** 204 No Content. */
     public static function noContent(): static
     {
@@ -60,6 +77,24 @@ class Response
         $clone = clone $this;
         $clone->status = $status;
         return $clone;
+    }
+
+    /** Flash old input to the session (for repopulating forms after redirect). */
+    public function withInput(array $input = []): static
+    {
+        if (isset($GLOBALS['__flint_app'])) {
+            $GLOBALS['__flint_app']->make(Session::class)->flash('_old_input', $input);
+        }
+        return $this;
+    }
+
+    /** Flash validation errors to the session. */
+    public function withErrors(array $errors): static
+    {
+        if (isset($GLOBALS['__flint_app'])) {
+            $GLOBALS['__flint_app']->make(Session::class)->flash('_errors', $errors);
+        }
+        return $this;
     }
 
     /** Send headers and body, then terminate. */

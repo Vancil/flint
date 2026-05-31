@@ -47,3 +47,45 @@ if (!function_exists('config')) {
         return $value;
     }
 }
+
+if (!function_exists('session')) {
+    /** Get the session singleton from the container. */
+    function session(): \Flint\Session
+    {
+        return $GLOBALS['__flint_app']->make(\Flint\Session::class);
+    }
+}
+
+if (!function_exists('old')) {
+    /** Get an old input value from the previous request's flash data. */
+    function old(string $key, mixed $default = null): mixed
+    {
+        if (!isset($GLOBALS['__flint_app'])) {
+            return $default;
+        }
+        $input = $GLOBALS['__flint_app']->make(\Flint\Session::class)->getFlash('_old_input', []);
+        return $input[$key] ?? $default;
+    }
+}
+
+if (!function_exists('csrf_field')) {
+    /** Return the CSRF hidden input field HTML. */
+    function csrf_field(): string
+    {
+        if (!isset($GLOBALS['__flint_app'])) {
+            return '';
+        }
+        return $GLOBALS['__flint_app']->make(\Flint\Csrf::class)->tokenField();
+    }
+}
+
+if (!function_exists('csrf_token')) {
+    /** Return the raw CSRF token string. */
+    function csrf_token(): string
+    {
+        if (!isset($GLOBALS['__flint_app'])) {
+            return '';
+        }
+        return $GLOBALS['__flint_app']->make(\Flint\Csrf::class)->token();
+    }
+}

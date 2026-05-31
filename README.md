@@ -1,6 +1,6 @@
 # Flint
 
-A lightweight, fast PHP framework with Laravel-style ergonomics and a fraction of the overhead. Expressive routing, Active Record ORM, queue jobs, schema builder, and a CLI — all with zero magic.
+A lightweight, fast PHP framework built for the web. Laravel-style ergonomics, session-based auth, a Blade-like template engine, and a fraction of the overhead. Expressive routing, Active Record ORM, queue jobs, schema builder, and a CLI — all with zero magic.
 
 **PHP >= 8.1 required.**
 
@@ -35,11 +35,18 @@ Install any package with Composer and register it in your application — no con
 composer install
 cp .env.example .env
 # edit .env with your database credentials
+php flint key:generate
 php flint migrate
-php -S localhost:8000 public/index.php
+php -S localhost:8000 -t public
 ```
 
-Visit `http://localhost:8000` — you should see `{"framework":"Flint","status":"ok"}`.
+To scaffold auth pages and views immediately:
+
+```bash
+composer require vancil/flint-auth
+php flint ui bootstrap --auth
+php flint migrate
+```
 
 ---
 
@@ -56,8 +63,13 @@ Visit `http://localhost:8000` — you should see `{"framework":"Flint","status":
 │   └── migrations/
 ├── public/
 │   └── index.php      # Single entry point
+├── resources/
+│   ├── views/         # Ember template files (.ember)
+│   └── js/            # Frontend JS (Vue/React)
 ├── routes/
 │   └── web.php
+├── storage/
+│   └── views/         # Compiled view cache (git-ignored)
 └── flint              # CLI
 ```
 
@@ -72,6 +84,7 @@ APP_NAME=Flint
 APP_ENV=local
 APP_DEBUG=true
 APP_SECRET=change-me-in-production
+APP_URL=http://localhost:8000
 
 DB_DRIVER=mysql
 DB_HOST=127.0.0.1
@@ -79,6 +92,13 @@ DB_PORT=3306
 DB_DATABASE=flint
 DB_USERNAME=root
 DB_PASSWORD=
+
+SESSION_COOKIE=flint_session
+SESSION_LIFETIME=7200
+
+MAIL_DRIVER=log
+MAIL_FROM_ADDRESS=hello@example.com
+MAIL_FROM_NAME="Flint"
 
 QUEUE_DRIVER=database
 ```
@@ -93,6 +113,194 @@ config('app.debug');       // true
 
 ---
 
+## Ember Template Engine
+
+Flint ships with **Ember**, a Blade-like template engine. View files use the `.ember` extension and live in `resources/views/`.
+
+### Rendering a View
+
+```php
+return Response::view('home', ['user' => $user]);
+```
+
+### Syntax
+
+**Escaped output** (XSS-safe):
+```
+{{ $name }}
+```
+
+**Raw output:**
+```
+{!! $html !!}
+```
+
+**Control structures:**
+```
+@if ($user->isAdmin())
+    <p>Admin panel</p>
+@elseif ($user->isEditor())
+    <p>Editor panel</p>
+@else
+    <p>Welcome</p>
+@endif
+
+@foreach ($posts as $post)
+    <h2>{{ $post->title }}</h2>
+@endforeach
+```
+
+**Auth directives:**
+```
+@auth
+    <a href="/dashboard">Dashboard</a>
+@endauth
+
+@guest
+    <a href="/login">Login</a>
+@endguest
+```
+
+**Forms:**
+```html
+<form method="POST" action="/login">
+    @csrf
+    <input type="email" name="email" value="@old('email')">
+    @error('email')
+        <p class="error">{{ $message }}</p>
+    @enderror
+    <button type="submit">Login</button>
+</form>
+```
+
+**Layouts:**
+
+`resources/views/layouts/app.ember`:
+```html
+<!DOCTYPE html>
+<html>
+<head><title>{{ $title ?? 'Flint' }}</title></head>
+<body>
+    @yield('content')
+</body>
+</html>
+```
+
+`resources/views/home.ember`:
+```
+@extends('layouts.app')
+
+@section('content')
+    <h1>Hello, {{ $name }}!</h1>
+@endsection
+```
+
+**Partials:**
+```
+@include('partials.nav')
+@include('partials.alert', ['type' => 'success', 'message' => 'Saved'])
+```
+
+### CLI
+
+```bash
+php flint make:view auth.login     # resources/views/auth/login.ember
+php flint make:layout app          # resources/views/layouts/app.ember
+php flint view:clear               # delete compiled cache files
+```
+
+---
+
+## Sessions
+
+Sessions start automatically on every request (via global `SessionMiddleware`). Use the `session()` helper or inject `Flint\Session` directly:
+
+```php
+session()->set('key', 'value');
+session()->get('key', 'default');
+session()->has('key');
+session()->forget('key');
+session()->flash('status', 'Saved successfully!');
+```
+
+**Old input** is available in views after a failed form submission:
+
+```php
+old('email');        // PHP
+@old('email')        // Ember directive
+```
+
+---
+
+## CSRF Protection
+
+All `POST`, `PUT`, `PATCH`, and `DELETE` requests are CSRF-verified automatically. Include the token in every form:
+
+```html
+<form method="POST" action="/profile">
+    @csrf
+    ...
+</form>
+```
+
+For AJAX requests, send the token as a header:
+
+```js
+fetch('/api/data', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': await fetch('/api/csrf-token').then(r => r.json()).then(d => d.token) },
+})
+```
+
+API routes under `/api/*` are excluded from CSRF verification by default. Customise via `config/csrf.php`:
+
+```php
+return [
+    'except' => ['/api/*', '/webhooks/*'],
+];
+```
+
+---
+
+## Auth
+
+The `Flint\Auth\Auth` class provides session-based authentication. It is available via constructor injection:
+
+```php
+use Flint\Auth\Auth;
+
+class DashboardController
+{
+    public function __construct(private readonly Auth $auth) {}
+
+    public function index(): Response
+    {
+        return Response::view('dashboard', ['user' => $this->auth->user()]);
+    }
+}
+```
+
+| Method | Description |
+|--------|-------------|
+| `$auth->user()` | Authenticated user object, or `null` |
+| `$auth->check()` | `true` if logged in |
+| `$auth->id()` | Authenticated user's ID |
+| `$auth->guest()` | `true` if not logged in |
+| `$auth->login($user, $remember)` | Log in; optionally set a 30-day remember-me cookie |
+| `$auth->logout()` | End session and clear remember-me cookie |
+
+Protect routes with the `auth` middleware alias:
+
+```php
+$router->group(['middleware' => ['auth']], function ($router) {
+    $router->get('/dashboard', [DashboardController::class, 'index']);
+});
+```
+
+To scaffold full auth pages (login, register, forgot password, email verification), install `vancil/flint-auth`.
+
+---
+
 ## Routing
 
 Define routes in `routes/web.php`. The `$router` variable is available automatically.
@@ -104,23 +312,19 @@ $router->put('/users/{id}',    [UserController::class, 'update']);
 $router->delete('/users/{id}', [UserController::class, 'destroy']);
 
 // Closure routes
-$router->get('/', fn() => Response::json(['status' => 'ok']));
+$router->get('/', fn() => Response::view('home'));
 ```
 
 ### Route Groups
 
-Groups apply a URI prefix and/or middleware to every route inside them:
-
 ```php
-$router->group(['prefix' => '/api', 'middleware' => ['auth', 'json']], function ($router) {
+$router->group(['prefix' => '/api', 'middleware' => ['auth']], function ($router) {
     $router->get('/profile', [ProfileController::class, 'show']);
     $router->put('/profile', [ProfileController::class, 'update']);
 });
 ```
 
 ### Route Parameters
-
-Named segments are injected into controller methods by matching parameter name:
 
 ```php
 // Route: /users/{id}
@@ -134,13 +338,11 @@ public function show(string $slug): Response { ... }
 
 ## Controllers
 
-Generate a controller with the CLI:
-
 ```bash
 php flint make:controller User
 ```
 
-Controllers are plain classes in `app/Controllers/`. Dependencies declared in the constructor are resolved automatically from the container.
+Controllers are plain classes in `app/Controllers/`. Dependencies are resolved via constructor injection.
 
 ```php
 namespace App\Controllers;
@@ -153,28 +355,18 @@ class UserController
 {
     public function index(): Response
     {
-        return Response::json(User::all());
+        return Response::view('users.index', ['users' => User::all()]);
     }
 
     public function store(Request $request): Response
     {
         $data = $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email',
         ]);
 
-        return Response::json(User::create($data), 201);
-    }
-
-    public function show(int $id): Response
-    {
-        return Response::json(User::findOrFail($id)->toArray());
-    }
-
-    public function destroy(int $id): Response
-    {
-        User::findOrFail($id)->delete();
-        return Response::noContent();
+        User::create($data);
+        return Response::redirect('/users');
     }
 }
 ```
@@ -182,8 +374,6 @@ class UserController
 ---
 
 ## Request
-
-The `Flint\Request` object is injected into any controller method that declares it as a parameter.
 
 ```php
 $request->method();                  // "GET", "POST", etc.
@@ -203,24 +393,15 @@ $request->ip();                      // client IP
 
 ```php
 $data = $request->validate([
-    'name'                  => 'required|string|max:255',
-    'email'                 => 'required|email|unique:users,email',
-    'password'              => 'required|min:8|confirmed',
-    'role'                  => 'required|in:admin,editor,user',
-    'score'                 => 'nullable|numeric|min:0',
+    'name'     => 'required|string|max:255',
+    'email'    => 'required|email',
+    'password' => 'required|min:8',
+    'role'     => 'required|in:admin,editor,user',
+    'score'    => 'nullable|numeric|min:0',
 ]);
 ```
 
-On failure a `422` JSON response is returned automatically:
-
-```json
-{
-  "errors": {
-    "email": ["The email has already been taken."],
-    "password": ["The password must be at least 8 characters."]
-  }
-}
-```
+On failure in a web (non-JSON) request, the user is redirected back with errors and old input automatically. In a JSON request, a `422` response is returned.
 
 **Available rules:**
 
@@ -243,13 +424,20 @@ On failure a `422` JSON response is returned automatically:
 ## Response
 
 ```php
-Response::json($data, 200);          // application/json
-Response::html('<h1>Hello</h1>');    // text/html
-Response::text('plain text');        // text/plain
-Response::redirect('/login', 302);   // redirect
-Response::noContent();               // 204
+Response::view('home', ['name' => 'Dan']); // render Ember view
+Response::json($data, 200);                // application/json
+Response::html('<h1>Hello</h1>');          // text/html
+Response::text('plain text');              // text/plain
+Response::redirect('/login', 302);         // redirect
+Response::back();                          // redirect to previous URL
+Response::noContent();                     // 204
 
-// Chaining
+// Web redirect helpers (chainable)
+return Response::back()
+    ->withErrors(['email' => ['Invalid credentials.']])
+    ->withInput(['email' => $data['email']]);
+
+// Header chaining
 return Response::json(['id' => 1])
     ->withHeader('X-Custom', 'value')
     ->withStatus(201);
@@ -257,9 +445,42 @@ return Response::json(['id' => 1])
 
 ---
 
-## Models & ORM
+## Mail
 
-Generate a model:
+Send email via the `Flint\Mail\Mailer` (injected via constructor):
+
+```php
+use Flint\Mail\Mailer;
+
+class WelcomeController
+{
+    public function __construct(private readonly Mailer $mailer) {}
+
+    public function store(Request $request): Response
+    {
+        // ... create user ...
+
+        $this->mailer
+            ->to($user->email, $user->name)
+            ->subject('Welcome to ' . config('app.name'))
+            ->view('emails.welcome', ['user' => $user])
+            ->send();
+
+        return Response::redirect('/dashboard');
+    }
+}
+```
+
+Set the driver in `.env`:
+
+```env
+MAIL_DRIVER=log    # writes to storage/logs/mail.log (default)
+MAIL_DRIVER=smtp   # sends real email
+```
+
+---
+
+## Models & ORM
 
 ```bash
 php flint make:model Post
@@ -274,121 +495,45 @@ class Post extends Model
 {
     protected string $table = 'posts';
     protected array $fillable = ['title', 'body', 'user_id'];
-    protected array $hidden = [];
-    protected array $casts = ['published' => 'bool', 'score' => 'float'];
+    protected array $casts = ['published' => 'bool'];
 }
 ```
 
 ### Querying
 
 ```php
-Post::all();                        // array of all records
-Post::find(1);                      // ?Post
-Post::findOrFail(1);                // Post or 404 exception
-Post::first();                      // ?Post
-
+Post::all();
+Post::find(1);
+Post::findOrFail(1);
 Post::where('published', true)->get();
-Post::where('score', '>', 4.5)
-    ->orderBy('created_at', 'DESC')
-    ->limit(10)
-    ->get();
+Post::where('score', '>', 4.5)->orderBy('created_at', 'DESC')->limit(10)->get();
+Post::where('slug', $slug)->firstModel();
 ```
 
 ### Creating & Updating
 
 ```php
 $post = Post::create(['title' => 'Hello', 'body' => '...']);
-
 $post->update(['title' => 'Updated']);
-
 $post->title = 'Also works';
 $post->save();
-
 $post->delete();
-```
-
-### Relationships
-
-Define relationships as methods on your model. Import each related model class at the top of the file so PHP can resolve `ClassName::class`:
-
-```php
-use App\Models\Post;
-use App\Models\Profile;
-
-class User extends Model
-{
-    public function posts(): array
-    {
-        return $this->hasMany(Post::class);
-    }
-
-    public function profile(): ?Profile
-    {
-        return $this->hasOne(Profile::class);
-    }
-}
-
-class Post extends Model
-{
-    public function user(): ?User
-    {
-        return $this->belongsTo(User::class);
-    }
-}
-```
-
-Usage:
-
-```php
-$user = User::findOrFail(1);
-
-$user->posts();           // array of post arrays
-$user->profile();         // Profile instance or null
-$user->profile()->bio;    // access properties directly
-
-$post = Post::findOrFail(1);
-$post->user();            // User instance or null
-$post->user()->name;
-```
-
-Foreign keys are inferred automatically from the class name (`User` → `user_id`, `BlogPost` → `blog_post_id`). Override them explicitly if needed:
-
-```php
-$this->hasMany(Post::class, 'author_id');
-$this->belongsTo(User::class, 'author_id');
-```
-
-### Serialisation
-
-```php
-$post->toArray();   // respects $hidden and $casts
-$post->toJson();
-```
-
-Timestamps (`created_at`, `updated_at`) are managed automatically. Opt out with:
-
-```php
-protected bool $timestamps = false;
 ```
 
 ---
 
 ## Migrations
 
-Generate a migration:
-
 ```bash
 php flint make:migration create_posts_table
 ```
-
-This creates a timestamped file in `database/migrations/`. Edit it using the Schema builder:
 
 ```php
 use Flint\Schema;
 use Flint\Blueprint;
 
 return new class {
-    public function up(PDO $pdo): void
+    public function up(): void
     {
         Schema::create('posts', function (Blueprint $table) {
             $table->id();
@@ -397,19 +542,17 @@ return new class {
             $table->string('slug')->unique();
             $table->longText('body')->nullable();
             $table->boolean('published')->default(false);
-            $table->decimal('price', 10, 2)->default(0);
+            $table->datetime('published_at')->nullable();
             $table->timestamps();
         });
     }
 
-    public function down(PDO $pdo): void
+    public function down(): void
     {
         Schema::dropIfExists('posts');
     }
 };
 ```
-
-Run and roll back:
 
 ```bash
 php flint migrate
@@ -417,8 +560,6 @@ php flint migrate:rollback
 ```
 
 ### Schema Builder Reference
-
-**Column types:**
 
 | Method | MySQL type |
 |--------|------------|
@@ -431,53 +572,38 @@ php flint migrate:rollback
 | `boolean('col')` | `TINYINT(1)` |
 | `float('col')` | `FLOAT` |
 | `decimal('col', 8, 2)` | `DECIMAL(8,2)` |
+| `datetime('col')` | `DATETIME` |
 | `timestamp('col')` | `TIMESTAMP` |
 | `json('col')` | `JSON` |
 | `timestamps()` | Adds `created_at` + `updated_at` |
 | `softDeletes()` | Adds `deleted_at` |
 
-**Modifiers** (chainable on any column):
-
-```php
-->nullable()          // allow NULL
-->default($value)     // set a DEFAULT value
-->unique()            // add a UNIQUE index
-->unsigned()          // UNSIGNED (MySQL only)
-```
-
-**Modifying an existing table:**
-
-```php
-Schema::table('users', function (Blueprint $table) {
-    $table->string('avatar_url')->nullable();
-});
-```
+Modifiers: `->nullable()`, `->default($value)`, `->unique()`, `->unsigned()`
 
 ---
 
 ## Middleware
 
-Reference middleware by alias in route definitions:
-
-```php
-$router->group(['middleware' => ['cors']], function ($router) {
-    // ...
-});
-```
-
-**Built-in middleware:**
+Built-in aliases registered automatically:
 
 | Alias | Behaviour |
 |-------|-----------|
-| `cors` | Adds CORS headers; handles OPTIONS preflight with 204 |
+| `cors` | CORS headers + OPTIONS preflight (204) |
+| `session` | Start session (applied globally) |
+| `csrf` | Verify CSRF token on state-changing requests (applied globally) |
+| `auth` | Redirect to `/login` if unauthenticated |
 
-Auth, throttling, and other concerns are handled by installable packages. To register a custom middleware alias, call `$router->setMiddlewareAliases()` in `Application::registerMiddlewareAliases()` or point directly to a class name in your route definition.
+Apply per-route:
+
+```php
+$router->group(['middleware' => ['auth']], function ($router) {
+    $router->get('/dashboard', [DashboardController::class, 'index']);
+});
+```
 
 ---
 
 ## Queue
-
-Generate a job:
 
 ```bash
 php flint make:job SendWelcomeEmail
@@ -491,51 +617,27 @@ use Flint\Queue\Job;
 class SendWelcomeEmail extends Job
 {
     public int $tries = 3;
-    public int $retryAfter = 60;
 
     public function __construct(
-        private readonly int $userId,
+        private readonly int    $userId,
         private readonly string $email,
     ) {}
 
-    public function handle(): void
-    {
-        // send the email...
-    }
-
-    public function failed(\Throwable $e): void
-    {
-        // called after all retries are exhausted
-    }
+    public function handle(): void { /* ... */ }
+    public function failed(\Throwable $e): void { /* ... */ }
 }
 ```
-
-### Dispatching
 
 ```php
 use Flint\Queue\Queue;
 
-Queue::dispatch(new SendWelcomeEmail($user['id'], $user['email']));
-
-// Delayed dispatch
-Queue::later(300, new SendWelcomeEmail($user['id'], $user['email']));
+Queue::dispatch(new SendWelcomeEmail($user->id, $user->email));
+Queue::later(300, new SendWelcomeEmail($user->id, $user->email));
 ```
-
-### Running the Worker
 
 ```bash
 php flint queue:work
 php flint queue:work --queue=emails
-php flint queue:work --queue=default --sleep=3
-```
-
-The worker handles retries, failure logging, and graceful shutdown on `SIGTERM`/`SIGINT`.
-
-**Queue drivers** are set in `.env`:
-
-```env
-QUEUE_DRIVER=database   # default — stores jobs in MySQL/SQLite
-QUEUE_DRIVER=redis      # requires the redis PHP extension
 ```
 
 ---
@@ -548,20 +650,24 @@ php flint make:controller <Name>       # app/Controllers/NameController.php
 php flint make:model <Name>            # app/Models/Name.php
 php flint make:job <Name>              # app/Jobs/NameJob.php
 php flint make:migration <name>        # database/migrations/<timestamp>_name.php
+php flint make:view <name>             # resources/views/<name>.ember
+php flint make:layout <name>           # resources/views/layouts/<name>.ember
 php flint migrate                      # run pending migrations
 php flint migrate:rollback             # roll back last batch
 php flint queue:work                   # start queue worker
-php flint queue:work --queue=<name>    # worker on a named queue
+php flint view:clear                   # clear compiled Ember view cache
 ```
 
 ---
 
 ## Error Handling
 
-| Exception | HTTP Response |
-|-----------|---------------|
-| `ValidationException` | `422` with `{ "errors": { ... } }` |
+| Situation | Response |
+|-----------|----------|
+| `ValidationException` in JSON request | `422` with `{ "errors": { ... } }` |
+| `ValidationException` in web request | Redirect back with errors + old input |
 | `ModelNotFoundException` | `404` with error message |
+| CSRF mismatch | `419` plain text |
 | Any other `Throwable` | `500` — full trace if `APP_DEBUG=true`, generic message if false |
 
 ---
