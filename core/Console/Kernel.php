@@ -5,14 +5,17 @@ namespace Flint\Console;
 
 use Flint\Application;
 use Flint\Console\Commands\{
+    KeyGenerate,
     MakeController,
-    MakeModel,
     MakeJob,
+    MakeLayout,
     MakeMigration,
+    MakeModel,
+    MakeView,
     Migrate,
     MigrateRollback,
     QueueWork,
-    KeyGenerate
+    ViewClear,
 };
 
 class Kernel
@@ -30,6 +33,9 @@ class Kernel
             new Migrate($app),
             new MigrateRollback($app),
             new QueueWork($app),
+            new MakeView($app),
+            new MakeLayout($app),
+            new ViewClear($app),
         ]);
 
         $this->loadPackageCommands();
