@@ -610,6 +610,54 @@ $router->group(['middleware' => ['auth']], function ($router) {
 
 ---
 
+## Cache
+
+Configure the driver in `config/cache.php` or via `.env`:
+
+```env
+CACHE_DRIVER=file   # file (default), redis, array
+CACHE_TTL=3600      # default TTL in seconds
+CACHE_PREFIX=flint_
+```
+
+Use the `cache()` helper or inject `Flint\Cache\Cache` directly:
+
+```php
+cache()->put('key', $value);          // store with default TTL
+cache()->put('key', $value, 60);      // store for 60 seconds
+cache()->forever('key', $value);      // store indefinitely
+cache()->get('key');                  // retrieve, null if missing
+cache()->get('key', 'default');       // retrieve with fallback
+cache()->has('key');                  // true/false
+cache()->forget('key');               // remove one entry
+cache()->flush();                     // remove all entries
+cache()->pull('key');                 // get and immediately remove
+```
+
+`remember` retrieves a cached value or computes and stores it on a miss:
+
+```php
+$user = cache()->remember('user.' . $id, 300, function () use ($id) {
+    return User::find($id);
+});
+
+$settings = cache()->rememberForever('settings', fn() => Settings::all());
+```
+
+### Drivers
+
+| Driver | Description |
+|--------|-------------|
+| `file` | Serialized files in `storage/cache/` — no extra dependencies |
+| `redis` | Uses the `php-redis` extension; shares Redis config with the queue |
+| `array` | In-memory only, no persistence — useful for testing |
+
+```bash
+php flint cache:clear   # flush all cached values
+```
+
+---
+
 ## Queue
 
 ```bash
@@ -662,6 +710,7 @@ php flint make:layout <name>           # resources/views/layouts/<name>.spark.ph
 php flint migrate                      # run pending migrations
 php flint migrate:rollback             # roll back last batch
 php flint queue:work                   # start queue worker
+php flint cache:clear                  # flush all cached values
 php flint view:clear                   # clear compiled Spark view cache
 ```
 

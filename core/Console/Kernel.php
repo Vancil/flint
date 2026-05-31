@@ -5,6 +5,7 @@ namespace Flint\Console;
 
 use Flint\Application;
 use Flint\Console\Commands\{
+    CacheClear,
     KeyGenerate,
     MakeController,
     MakeJob,
@@ -25,6 +26,7 @@ class Kernel
     public function __construct(private readonly Application $app)
     {
         $this->register([
+            new CacheClear($app),
             new KeyGenerate($app),
             new MakeController($app),
             new MakeModel($app),
