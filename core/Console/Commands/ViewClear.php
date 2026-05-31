@@ -14,7 +14,7 @@ class ViewClear extends Command
 
     public function description(): string
     {
-        return 'Clear all compiled Ember view cache files';
+        return 'Clear all compiled Spark view cache files';
     }
 
     public function handle(array $args): void

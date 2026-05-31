@@ -3,15 +3,15 @@ declare(strict_types=1);
 
 namespace Flint\View;
 
-class EmberEngine
+class SparkEngine
 {
-    private EmberCompiler $compiler;
+    private SparkCompiler $compiler;
 
     public function __construct(
         private readonly string $viewsPath,
         private readonly string $cachePath,
     ) {
-        $this->compiler = new EmberCompiler($viewsPath);
+        $this->compiler = new SparkCompiler($viewsPath);
     }
 
     /** Render a view by dot-notation name, returning the HTML string. */
@@ -32,33 +32,29 @@ class EmberEngine
         return file_exists($this->resolve($view));
     }
 
-    /** Convert dot-notation to filesystem path. */
     private function resolve(string $view): string
     {
-        $relativePath = str_replace('.', '/', $view) . '.ember';
+        $relativePath = str_replace('.', '/', $view) . '.spark.php';
         $path = $this->viewsPath . '/' . $relativePath;
 
         if (!file_exists($path)) {
-            throw new \RuntimeException("Ember view not found: {$view} ({$path})");
+            throw new \RuntimeException("Spark view not found: {$view} ({$path})");
         }
 
         return $path;
     }
 
-    /** Determine cache file path for a given source path. */
     private function cached(string $sourcePath): string
     {
         return $this->cachePath . '/' . md5($sourcePath) . '.php';
     }
 
-    /** Returns true if the cache file is missing or older than the source. */
     private function isStale(string $sourcePath, string $cachedPath): bool
     {
         if (!file_exists($cachedPath)) {
             return true;
         }
 
-        // In production (APP_DEBUG=false), skip staleness check — OPcache handles it
         if (!config('app.debug', true)) {
             return false;
         }
@@ -79,18 +75,14 @@ class EmberEngine
         file_put_contents($cachedPath, $compiled);
     }
 
-    /** Include the compiled template in an isolated scope and capture its output. */
     private function evaluate(string $cachedPath, array $data): string
     {
-        // Make the engine available inside templates for @include
-        $data['__ember'] = $this;
+        $data['__spark'] = $this;
 
-        // Auto-inject auth instance so @auth / @guest directives work
         if (!isset($data['auth']) && isset($GLOBALS['__flint_app'])) {
             $data['auth'] = $GLOBALS['__flint_app']->make(\Flint\Auth\Auth::class);
         }
 
-        // Auto-inject errors and old input from the session flash
         if (!isset($data['errors']) && isset($GLOBALS['__flint_app'])) {
             $session = $GLOBALS['__flint_app']->make(\Flint\Session::class);
             $data['errors'] = $session->getFlash('_errors', []);

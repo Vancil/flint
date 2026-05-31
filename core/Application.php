@@ -12,7 +12,7 @@ use Flint\Mail\Mailer;
 use Flint\Middleware\CorsMiddleware;
 use Flint\Middleware\CsrfMiddleware;
 use Flint\Middleware\SessionMiddleware;
-use Flint\View\EmberEngine;
+use Flint\View\SparkEngine;
 
 class Application
 {
@@ -90,8 +90,8 @@ class Application
             return new Auth($c->make(Session::class));
         });
 
-        $this->container->singleton(EmberEngine::class, function () use ($basePath) {
-            return new EmberEngine(
+        $this->container->singleton(SparkEngine::class, function () use ($basePath) {
+            return new SparkEngine(
                 viewsPath: $basePath . '/resources/views',
                 cachePath: $basePath . '/storage/views',
             );
