@@ -1,5 +1,12 @@
 # Flint
 
+<p align="center">
+  <a href="https://github.com/Vancil/flint/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Vancil/flint/ci.yml?label=tests" alt="Tests"></a>
+  <a href="https://packagist.org/packages/vancil/flint"><img src="https://img.shields.io/packagist/dt/vancil/flint" alt="Total Downloads"></a>
+  <a href="https://packagist.org/packages/vancil/flint"><img src="https://img.shields.io/packagist/v/vancil/flint" alt="Latest Version on Packagist"></a>
+  <a href="https://packagist.org/packages/vancil/flint"><img src="https://img.shields.io/packagist/l/vancil/flint" alt="License"></a>
+</p>
+
 A lightweight, fast PHP framework built for the web. Laravel-style ergonomics, session-based auth, a Blade-like template engine, and a fraction of the overhead. Expressive routing, Active Record ORM, queue jobs, schema builder, and a CLI — all with zero magic.
 
 **PHP >= 8.1 required.**
