@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Flint\View;
 
-class EmberCompiler
+class SparkCompiler
 {
     private string $viewsPath;
 
@@ -12,10 +12,8 @@ class EmberCompiler
         $this->viewsPath = $viewsPath;
     }
 
-    /** Compile an .ember source string to a PHP string. */
     public function compile(string $source, string $sourcePath = ''): string
     {
-        // Handle @extends layout wrapping first (pre-pass)
         if (preg_match('/@extends\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)/', $source, $extMatch)) {
             $source = $this->compileWithLayout($source, $extMatch[1]);
         }
@@ -23,13 +21,10 @@ class EmberCompiler
         return $this->compileDirectives($source);
     }
 
-    /** Resolve a layout, extract sections, substitute them into the layout, then compile. */
     private function compileWithLayout(string $source, string $layout): string
     {
-        // Remove the @extends line
         $source = preg_replace('/@extends\s*\(\s*[\'"][^\'"]+[\'"]\s*\)\s*\n?/', '', $source);
 
-        // Extract @section('name') ... @endsection blocks
         $sections = [];
         $source = preg_replace_callback(
             '/@section\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)\s*(.*?)@endsection/s',
@@ -40,14 +35,12 @@ class EmberCompiler
             $source
         );
 
-        // Load the layout source
-        $layoutPath = $this->viewsPath . '/' . str_replace('.', '/', $layout) . '.ember';
+        $layoutPath = $this->viewsPath . '/' . str_replace('.', '/', $layout) . '.spark.php';
         if (!file_exists($layoutPath)) {
-            throw new \RuntimeException("Ember layout not found: {$layout} ({$layoutPath})");
+            throw new \RuntimeException("Spark layout not found: {$layout} ({$layoutPath})");
         }
         $layoutSource = file_get_contents($layoutPath);
 
-        // Substitute @yield('name') in layout with captured section content
         $merged = preg_replace_callback(
             '/@yield\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)/',
             fn(array $m) => $sections[$m[1]] ?? '',
@@ -60,11 +53,7 @@ class EmberCompiler
     private function compileDirectives(string $source): string
     {
         // Raw (unescaped) echo: {!! expr !!}
-        $source = preg_replace(
-            '/\{!!\s*(.*?)\s*!!\}/s',
-            '<?php echo $1; ?>',
-            $source
-        );
+        $source = preg_replace('/\{!!\s*(.*?)\s*!!\}/s', '<?php echo $1; ?>', $source);
 
         // Escaped echo: {{ expr }}
         $source = preg_replace(
@@ -74,11 +63,7 @@ class EmberCompiler
         );
 
         // @php ... @endphp
-        $source = preg_replace(
-            '/@php(.*?)@endphp/s',
-            '<?php$1?>',
-            $source
-        );
+        $source = preg_replace('/@php(.*?)@endphp/s', '<?php$1?>', $source);
 
         // @if / @elseif / @else / @endif
         $source = preg_replace('/@if\s*\((.+?)\)/', '<?php if ($1): ?>', $source);
@@ -114,7 +99,7 @@ class EmberCompiler
             $source
         );
 
-        // @old('field') — flash old input (outputs escaped value)
+        // @old('field')
         $source = preg_replace(
             '/@old\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)/',
             '<?php echo htmlspecialchars((string)(old(\'$1\', \'\')), ENT_QUOTES, \'UTF-8\'); ?>',
@@ -138,12 +123,12 @@ class EmberCompiler
             function (array $m): string {
                 $view = $m[1];
                 $data = isset($m[2]) && $m[2] !== '' ? $m[2] : '[]';
-                return "<?php echo \$__ember->render('{$view}', array_merge(get_defined_vars(), {$data})); ?>";
+                return "<?php echo \$__spark->render('{$view}', array_merge(get_defined_vars(), {$data})); ?>";
             },
             $source
         );
 
-        // @dump($var) — debug helper
+        // @dump($var)
         $source = preg_replace('/@dump\s*\((.+?)\)/', '<?php var_dump($1); ?>', $source);
 
         return $source;

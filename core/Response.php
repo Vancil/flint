@@ -50,10 +50,10 @@ class Response
         return static::redirect($url, $status);
     }
 
-    /** Render an Ember view and return an HTML response. */
+    /** Render an Spark view and return an HTML response. */
     public static function view(string $view, array $data = [], int $status = 200): static
     {
-        $engine = $GLOBALS['__flint_app']->make(\Flint\View\EmberEngine::class);
+        $engine = $GLOBALS['__flint_app']->make(\Flint\View\SparkEngine::class);
         return static::html($engine->render($view, $data), $status);
     }
 

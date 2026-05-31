@@ -14,7 +14,7 @@ class MakeLayout extends Command
 
     public function description(): string
     {
-        return 'Create a new Ember layout file';
+        return 'Create a new Spark layout file';
     }
 
     public function handle(array $args): void
@@ -27,7 +27,7 @@ class MakeLayout extends Command
             exit(1);
         }
 
-        $fullPath = $this->app->basePath . '/resources/views/layouts/' . $name . '.ember';
+        $fullPath = $this->app->basePath . '/resources/views/layouts/' . $name . '.spark.php';
         $dir      = dirname($fullPath);
 
         if (!is_dir($dir)) {
@@ -35,7 +35,7 @@ class MakeLayout extends Command
         }
 
         if (file_exists($fullPath)) {
-            $this->warn("Layout already exists: resources/views/layouts/{$name}.ember");
+            $this->warn("Layout already exists: resources/views/layouts/{$name}.spark.php");
             return;
         }
 
@@ -54,6 +54,6 @@ class MakeLayout extends Command
 EMBER;
 
         file_put_contents($fullPath, $stub . "\n");
-        $this->info("Layout created: resources/views/layouts/{$name}.ember");
+        $this->info("Layout created: resources/views/layouts/{$name}.spark.php");
     }
 }

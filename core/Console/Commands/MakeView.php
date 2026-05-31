@@ -14,7 +14,7 @@ class MakeView extends Command
 
     public function description(): string
     {
-        return 'Create a new Ember view file';
+        return 'Create a new Spark view file';
     }
 
     public function handle(array $args): void
@@ -27,7 +27,7 @@ class MakeView extends Command
             exit(1);
         }
 
-        $relativePath = str_replace('.', '/', $name) . '.ember';
+        $relativePath = str_replace('.', '/', $name) . '.spark.php';
         $fullPath     = $this->app->basePath . '/resources/views/' . $relativePath;
         $dir          = dirname($fullPath);
 

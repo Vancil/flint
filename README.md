@@ -64,7 +64,7 @@ php flint migrate
 ├── public/
 │   └── index.php      # Single entry point
 ├── resources/
-│   ├── views/         # Ember template files (.ember)
+│   ├── views/         # Spark template files (.spark.php)
 │   └── js/            # Frontend JS (Vue/React)
 ├── routes/
 │   └── web.php
@@ -113,9 +113,9 @@ config('app.debug');       // true
 
 ---
 
-## Ember Template Engine
+## Spark Template Engine
 
-Flint ships with **Ember**, a Blade-like template engine. View files use the `.ember` extension and live in `resources/views/`.
+Flint ships with **Spark**, a Blade-like template engine. View files use the `.spark.php` extension and live in `resources/views/`.
 
 ### Rendering a View
 
@@ -175,7 +175,7 @@ return Response::view('home', ['user' => $user]);
 
 **Layouts:**
 
-`resources/views/layouts/app.ember`:
+`resources/views/layouts/app.spark.php`:
 ```html
 <!DOCTYPE html>
 <html>
@@ -186,7 +186,7 @@ return Response::view('home', ['user' => $user]);
 </html>
 ```
 
-`resources/views/home.ember`:
+`resources/views/home.spark.php`:
 ```
 @extends('layouts.app')
 
@@ -204,8 +204,8 @@ return Response::view('home', ['user' => $user]);
 ### CLI
 
 ```bash
-php flint make:view auth.login     # resources/views/auth/login.ember
-php flint make:layout app          # resources/views/layouts/app.ember
+php flint make:view auth.login     # resources/views/auth/login.spark.php
+php flint make:layout app          # resources/views/layouts/app.spark.php
 php flint view:clear               # delete compiled cache files
 ```
 
@@ -227,7 +227,7 @@ session()->flash('status', 'Saved successfully!');
 
 ```php
 old('email');        // PHP
-@old('email')        // Ember directive
+@old('email')        // Spark directive
 ```
 
 ---
@@ -424,7 +424,7 @@ On failure in a web (non-JSON) request, the user is redirected back with errors 
 ## Response
 
 ```php
-Response::view('home', ['name' => 'Dan']); // render Ember view
+Response::view('home', ['name' => 'Dan']); // render Spark view
 Response::json($data, 200);                // application/json
 Response::html('<h1>Hello</h1>');          // text/html
 Response::text('plain text');              // text/plain
@@ -650,12 +650,12 @@ php flint make:controller <Name>       # app/Controllers/NameController.php
 php flint make:model <Name>            # app/Models/Name.php
 php flint make:job <Name>              # app/Jobs/NameJob.php
 php flint make:migration <name>        # database/migrations/<timestamp>_name.php
-php flint make:view <name>             # resources/views/<name>.ember
-php flint make:layout <name>           # resources/views/layouts/<name>.ember
+php flint make:view <name>             # resources/views/<name>.spark.php
+php flint make:layout <name>           # resources/views/layouts/<name>.spark.php
 php flint migrate                      # run pending migrations
 php flint migrate:rollback             # roll back last batch
 php flint queue:work                   # start queue worker
-php flint view:clear                   # clear compiled Ember view cache
+php flint view:clear                   # clear compiled Spark view cache
 ```
 
 ---
