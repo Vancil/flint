@@ -22,9 +22,8 @@ Features that don't belong in core are available as official Vancil packages:
 
 | Package | Description |
 |---------|-------------|
-| `vancil/flint-auth` | Auth scaffold — Bootstrap, Vue, and React presets with login, register, password reset, and email verification |
-| `vancil/flint-cache` | Cache layer with file, Redis, and APCu drivers |
-| `vancil/flint-rate-limit` | Rate limiting middleware with cache-backed storage |
+| [`vancil/flint-auth`](https://github.com/Vancil/flint-auth) | Auth scaffold — Bootstrap, Vue, and React presets with login, register, password reset, and email verification |
+| [`vancil/flint-mail`](https://github.com/Vancil/flint-mail) | Mail package — Mailable classes, async queueing, and six drivers (SMTP, Mailgun, Postmark, SES, SendGrid, Log) |
 
 Install any package with Composer and register it in your application — no configuration files to publish, no service providers to remember.
 
