@@ -118,6 +118,8 @@ class Router
                     ->then(function (Request $req) use ($route, $params, $container): Response {
                         return $this->callAction($route['action'], $params, $req, $container);
                     });
+            } catch (\Flint\Exceptions\CsrfTokenMismatchException) {
+                return Response::html('CSRF token mismatch.', 419);
             } catch (\Throwable $e) {
                 if (config('app.debug')) {
                     return Response::json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
@@ -145,6 +147,12 @@ class Router
             $controller = $container->make($class);
             return $controller->$method(...$this->resolveMethodParams($class, $method, $params, $request, $container));
         } catch (ValidationException $e) {
+            // In web mode (non-JSON request), redirect back with errors and old input
+            if (!$request->isJson()) {
+                return Response::back()
+                    ->withErrors($e->errors())
+                    ->withInput($request->all());
+            }
             return Response::json(['errors' => $e->errors()], 422);
         } catch (ModelNotFoundException $e) {
             return Response::json(['error' => $e->getMessage()], 404);
