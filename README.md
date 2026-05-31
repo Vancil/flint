@@ -39,7 +39,8 @@ Install any package with Composer and register it in your application — no con
 ## Getting Started
 
 ```bash
-composer install
+composer create-project vancil/flint my-app
+cd my-app
 cp .env.example .env
 # edit .env with your database credentials
 php flint key:generate
