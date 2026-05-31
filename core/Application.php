@@ -6,6 +6,10 @@ namespace Flint;
 use Dotenv\Dotenv;
 use Flint\Auth\Auth;
 use Flint\Auth\AuthMiddleware;
+use Flint\Cache\Cache;
+use Flint\Cache\Drivers\ArrayDriver;
+use Flint\Cache\Drivers\FileDriver;
+use Flint\Cache\Drivers\RedisDriver;
 use Flint\Mail\Drivers\LogDriver;
 use Flint\Mail\Drivers\SmtpDriver;
 use Flint\Mail\Mailer;
@@ -95,6 +99,21 @@ class Application
                 viewsPath: $basePath . '/resources/views',
                 cachePath: $basePath . '/storage/views',
             );
+        });
+
+        $this->container->singleton(Cache::class, function () use ($basePath) {
+            $driver = match (config('cache.driver', 'file')) {
+                'redis' => new RedisDriver(
+                    config: config('cache.redis', []),
+                    prefix: config('cache.prefix', 'flint_'),
+                ),
+                'array' => new ArrayDriver(),
+                default => new FileDriver(
+                    path:   $basePath . '/storage/cache',
+                    prefix: config('cache.prefix', 'flint_'),
+                ),
+            };
+            return new Cache($driver);
         });
 
         $this->container->singleton(Mailer::class, function () use ($basePath) {

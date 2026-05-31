@@ -48,6 +48,14 @@ if (!function_exists('config')) {
     }
 }
 
+if (!function_exists('cache')) {
+    /** Get the cache singleton from the container. */
+    function cache(): \Flint\Cache\Cache
+    {
+        return $GLOBALS['__flint_app']->make(\Flint\Cache\Cache::class);
+    }
+}
+
 if (!function_exists('session')) {
     /** Get the session singleton from the container. */
     function session(): \Flint\Session
