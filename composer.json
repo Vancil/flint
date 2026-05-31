@@ -1,0 +1,32 @@
+{
+    "name": "vancil/flint",
+    "description": "Flint — fast, expressive PHP for production APIs",
+    "type": "project",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../flint-auth"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Flint\\": "core/",
+            "App\\": "app/"
+        },
+        "files": [
+            "core/helpers.php"
+        ]
+    },
+    "bin": ["flint"],
+    "config": {
+        "optimize-autoloader": true
+    }
+}

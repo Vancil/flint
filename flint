@@ -1,0 +1,12 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+define('BASE_PATH', __DIR__);
+require __DIR__ . '/vendor/autoload.php';
+
+$app = new Flint\Application(BASE_PATH);
+$app->boot();
+
+$kernel = new Flint\Console\Kernel($app);
+$kernel->handle($argv);

@@ -1,0 +1,7 @@
+/vendor/
+/.env
+/docker-compose.yml
+/phpdocker/
+/.claude/
+FLINT_SPEC.md
+.phpunit.result.cache
